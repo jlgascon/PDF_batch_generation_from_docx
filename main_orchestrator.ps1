@@ -1,42 +1,83 @@
-# Define the staging ground
+# ==============================================================================
+# DOCX to PDF Batch Transmutation Protocol
+# ==============================================================================
+
 $TargetFolder = "C:\Path\To\Your\Batch\Folder"
 
-# Engage Word in stealth mode (headless)
-$Word = New-Object -ComObject Word.Application
-$Word.Visible = $False 
-
-# Word's internal code for the PDF format
-$wdFormatPDF = 17 
-
-# Gather the raw materials
-$Docs = Get-ChildItem -Path $TargetFolder -Filter *.docx
-
-Write-Host "Initiating batch conversion protocol..."
-
-foreach ($Doc in $Docs) {
-    try {
-        # Construct the exact output path for the new PDF
-        $PdfPath = $Doc.FullName.Replace(".docx", ".pdf")
-        
-        Write-Host "Synthesizing PDF: $($Doc.Name) -> $($Doc.BaseName).pdf"
-        
-        # Open the document silently
-        $OpenDoc = $Word.Documents.Open($Doc.FullName)
-        
-        # Force the conversion and save the output
-        $OpenDoc.SaveAs([ref]$PdfPath, [ref]$wdFormatPDF)
-        
-        # Close the document, discarding any accidental local changes
-        $OpenDoc.Close($False)
-        
-    }
-    catch {
-        Write-Host "Dissonance detected on $($Doc.Name): $_"
-    }
+# Pre-flight check: Ensure the staging ground actually exists
+if (-not (Test-Path -Path $TargetFolder)) {
+    Write-Error "Dissonance detected: Target folder '$TargetFolder' does not exist. Aborting sequence."
+    exit
 }
 
-# Terminate the Word process and sweep the memory footprint
-$Word.Quit()
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($Word) | Out-Null
+$Docs = Get-ChildItem -Path $TargetFolder -Filter *.docx
+if ($Docs.Count -eq 0) {
+    Write-Host "Staging ground is empty. No raw materials found."
+    exit
+}
 
-Write-Host "Batch rendering complete. The spooler is safe."
+Write-Host "Initiating batch conversion pipeline for $($Docs.Count) files..."
+
+# Word COM Object Constants
+$wdFormatPDF = 17 
+$wdAlertsNone = 0
+$msoAutomationSecurityForceDisable = 3
+
+$Word = $null
+
+try {
+    # Spin up the headless rendering engine
+    $Word = New-Object -ComObject Word.Application
+    $Word.Visible = $False 
+    
+    # Best Practice: Suppress all modal pop-ups (e.g., "Document contains unreadable content")
+    # If a pop-up triggers in a hidden window, the script hangs eternally.
+    $Word.DisplayAlerts = $wdAlertsNone
+    
+    # Best Practice: Quarantine. Force disable macros in the target documents to prevent rogue execution
+    $Word.AutomationSecurity = $msoAutomationSecurityForceDisable
+
+    foreach ($Doc in $Docs) {
+        $PdfPath = $Doc.FullName.Replace(".docx", ".pdf")
+        Write-Host "Synthesizing: $($Doc.Name) -> $($Doc.BaseName).pdf"
+        
+        $OpenDoc = $null
+        try {
+            # Open silently and strictly in read-only mode
+            $OpenDoc = $Word.Documents.Open($Doc.FullName, $null, $True)
+            
+            # Forge the PDF
+            $OpenDoc.SaveAs([ref]$PdfPath, [ref]$wdFormatPDF)
+        }
+        catch {
+            Write-Error "Rendering failure on $($Doc.Name): $_"
+        }
+        finally {
+            # Best Practice: Always close the document within a finally block
+            # wdDoNotSaveChanges = 0
+            if ($null -ne $OpenDoc) {
+                $OpenDoc.Close(0)
+                [System.Runtime.Interopservices.Marshal]::ReleaseComObject($OpenDoc) | Out-Null
+            }
+        }
+    }
+}
+catch {
+    Write-Error "Catastrophic pipeline failure: $_"
+}
+finally {
+    # ==========================================================================
+    # NUCLEAR CLEANUP: This block executes even if the script crashes or is killed
+    # ==========================================================================
+    if ($null -ne $Word) {
+        Write-Host "Terminating Word engine and sweeping memory footprint..."
+        $Word.Quit()
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Word) | Out-Null
+    }
+    
+    # Force the .NET garbage collector to purge the released COM pointers
+    [System.GC]::Collect()
+    [System.GC]::WaitForPendingFinalizers()
+    
+    Write-Host "Pipeline secured."
+}
