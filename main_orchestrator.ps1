@@ -1,83 +1,150 @@
 # ==============================================================================
-# DOCX to PDF Batch Transmutation Protocol
+# DOCX -> PDF Heavy Transmutation Pipeline (Production Grade)
 # ==============================================================================
 
-$TargetFolder = "C:\Path\To\Your\Batch\Folder"
+# --- 0. Global Configuration ---
+# Set your master directory here. The script will build the rest.
+$BaseLogisticsHub = "C:\Path\To\Your\LogisticsHub" 
 
-# Pre-flight check: Ensure the staging ground actually exists
-if (-not (Test-Path -Path $TargetFolder)) {
-    Write-Error "Write-error detected: Target folder '$TargetFolder' does not exist. Aborting sequence."
-    exit
-}
+$QueueDir   = Join-Path $BaseLogisticsHub "01_Queue"    
+$OutboxDir  = Join-Path $BaseLogisticsHub "02_Outbox"   
+$ArchiveDir = Join-Path $BaseLogisticsHub "03_Archive"  
+$LogFile    = Join-Path $BaseLogisticsHub "Transmutation_Audit.log"
 
-$Docs = Get-ChildItem -Path $TargetFolder -Filter *.docx
-if ($Docs.Count -eq 0) {
-    Write-Host "Staging ground is empty. No raw materials found."
-    exit
-}
-
-Write-Host "Initiating batch conversion pipeline for $($Docs.Count) files..."
-
-# Word COM Object Constants, 17 is the hardcode for PDF in word
+# Word COM Object Constants
 $wdFormatPDF = 17 
 $wdAlertsNone = 0
 $msoAutomationSecurityForceDisable = 3
 
-$Word = $null
+# --- 1. Helper Functions ---
+
+function Write-Audit {
+    param ([string]$Message, [string]$Level="INFO")
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $LogEntry = "[$Timestamp] [$Level] $Message"
+    
+    Write-Host $LogEntry
+    Add-Content -Path $LogFile -Value $LogEntry
+}
+
+function Test-KineticAccess {
+    param ([string]$TargetDirectory)
+    $ProbeFile = Join-Path $TargetDirectory "recon_probe_$([guid]::NewGuid()).tmp"
+    try {
+        New-Item -Path $ProbeFile -ItemType File -Force -ErrorAction Stop | Out-Null
+        Remove-Item -Path $ProbeFile -Force -ErrorAction Stop
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Start-WordEngine {
+    Write-Audit "Spinning up headless Word rendering engine..." "INFO"
+    $Engine = New-Object -ComObject Word.Application
+    $Engine.Visible = $False 
+    $Engine.DisplayAlerts = $wdAlertsNone
+    $Engine.AutomationSecurity = $msoAutomationSecurityForceDisable
+    return $Engine
+}
+
+# --- 2. Infrastructure & Reconnaissance ---
+
+# Forge the directories if they don't exist
+foreach ($Dir in @($QueueDir, $OutboxDir, $ArchiveDir)) {
+    if (-not (Test-Path $Dir)) { 
+        New-Item -ItemType Directory -Path $Dir | Out-Null 
+    }
+}
+
+Write-Audit "Initiating kinetic access probes on logistics hubs..." "INFO"
+
+foreach ($Dir in @($QueueDir, $OutboxDir, $ArchiveDir)) {
+    if (-not (Test-KineticAccess -TargetDirectory $Dir)) {
+        Write-Audit "ACCESS DENIED on $Dir. Dissonance detected in network permissions. Aborting deployment." "CRITICAL"
+        exit
+    }
+}
+Write-Audit "Perimeter secure. Full read/write network access confirmed." "SUCCESS"
+
+# --- 3. Target Acquisition ---
+
+$Docs = Get-ChildItem -Path $QueueDir -Filter *.docx
+if ($Docs.Count -eq 0) {
+    Write-Audit "Queue is empty. Standing down." "INFO"
+    exit
+}
+Write-Audit "Target acquired: $($Docs.Count) documents in the Queue." "INFO"
+
+# --- 4. The Forge (Main Execution Loop) ---
+
+$Word = Start-WordEngine
 
 try {
-    # Spin up the headless rendering engine
-    $Word = New-Object -ComObject Word.Application
-    $Word.Visible = $False 
-    
-    # Best Practice: Suppress all modal pop-ups (e.g., "Document contains unreadable content")
-    # If a pop-up triggers in a hidden window, the script hangs eternally.
-    $Word.DisplayAlerts = $wdAlertsNone
-    
-    # Best Practice: Quarantine. Force disable macros in the target documents to prevent rogue execution
-    $Word.AutomationSecurity = $msoAutomationSecurityForceDisable
-
     foreach ($Doc in $Docs) {
-        $PdfPath = $Doc.FullName.Replace(".docx", ".pdf")
-        Write-Host "Synthesizing: $($Doc.Name) -> $($Doc.BaseName).pdf"
-        
+        $PdfName = "$($Doc.BaseName).pdf"
+        $PdfPath = Join-Path $OutboxDir $PdfName
+        $ArchivePath = Join-Path $ArchiveDir $Doc.Name
+
+        # Idempotency Bypass
+        if (Test-Path $PdfPath) {
+            Write-Audit "Bypassing $($Doc.Name) - PDF already forged in Outbox." "WARN"
+            Move-Item -Path $Doc.FullName -Destination $ArchivePath -Force
+            continue
+        }
+
+        Write-Audit "Synthesizing: $($Doc.Name)" "INFO"
+
+        # Engine Health Check (Defibrillator)
+        try {
+            $HealthCheck = $Word.Version
+        } catch {
+            Write-Audit "Word engine flatlined (RPC Server Unavailable). Initiating hard restart..." "ERROR"
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Word) | Out-Null
+            $Word = Start-WordEngine
+        }
+
         $OpenDoc = $null
         try {
-            # Open silently and strictly in read-only mode
+            # Open silently, read-only
             $OpenDoc = $Word.Documents.Open($Doc.FullName, $null, $True)
             
             # Forge the PDF
             $OpenDoc.SaveAs([ref]$PdfPath, [ref]$wdFormatPDF)
+            
+            # Close immediately
+            $OpenDoc.Close(0)
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($OpenDoc) | Out-Null
+            $OpenDoc = $null
+            
+            # Archive the raw ore
+            Move-Item -Path $Doc.FullName -Destination $ArchivePath -Force
+            Write-Audit "Render complete. Archived raw ore: $($Doc.Name)" "SUCCESS"
         }
         catch {
-            Write-Error "Rendering failure on $($Doc.Name): $_"
+            Write-Audit "Catastrophic dissonance rendering $($Doc.Name): $_" "ERROR"
         }
         finally {
-            # Best Practice: Always close the document within a finally block
-            # wdDoNotSaveChanges = 0
             if ($null -ne $OpenDoc) {
-                $OpenDoc.Close(0)
+                try { $OpenDoc.Close(0) } catch {}
                 [System.Runtime.Interopservices.Marshal]::ReleaseComObject($OpenDoc) | Out-Null
             }
         }
     }
 }
 catch {
-    Write-Error "Catastrophic pipeline failure: $_"
+    Write-Audit "Critical Pipeline Failure: $_" "CRITICAL"
 }
 finally {
-    # ==========================================================================
-    # NUCLEAR CLEANUP: This block executes even if the script crashes or is killed
-    # ==========================================================================
+    # --- 5. Nuclear Cleanup ---
+    Write-Audit "Terminating Word engine and sweeping memory footprint..." "INFO"
     if ($null -ne $Word) {
-        Write-Host "Terminating Word engine and sweeping memory footprint..."
-        $Word.Quit()
+        try { $Word.Quit() } catch {}
         [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Word) | Out-Null
     }
     
-    # Force the .NET garbage collector to purge the released COM pointers
     [System.GC]::Collect()
     [System.GC]::WaitForPendingFinalizers()
     
-    Write-Host "Pipeline secured."
+    Write-Audit "Pipeline secured. The spooler is safe." "INFO"
 }
