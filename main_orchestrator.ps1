@@ -6,7 +6,7 @@ $TargetFolder = "C:\Path\To\Your\Batch\Folder"
 
 # Pre-flight check: Ensure the staging ground actually exists
 if (-not (Test-Path -Path $TargetFolder)) {
-    Write-Error "Dissonance detected: Target folder '$TargetFolder' does not exist. Aborting sequence."
+    Write-Error "Write-error detected: Target folder '$TargetFolder' does not exist. Aborting sequence."
     exit
 }
 
@@ -18,7 +18,7 @@ if ($Docs.Count -eq 0) {
 
 Write-Host "Initiating batch conversion pipeline for $($Docs.Count) files..."
 
-# Word COM Object Constants
+# Word COM Object Constants, 17 is the hardcode for PDF in word
 $wdFormatPDF = 17 
 $wdAlertsNone = 0
 $msoAutomationSecurityForceDisable = 3
