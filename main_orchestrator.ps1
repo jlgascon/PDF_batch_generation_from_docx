@@ -110,7 +110,9 @@ try {
             $OpenDoc = $Word.Documents.Open($Doc.FullName, $null, $True)
             
             # Forge the PDF
-            $OpenDoc.SaveAs([ref]$PdfPath, [ref]$wdFormatPDF)
+            # $OpenDoc.SaveAs([ref]$PdfPath, [ref]$wdFormatPDF)
+            # Issues with object being passed instead of string literal, trying a hard coded 
+	        $OpenDoc.SaveAs([string]$PdfPath, 17)
             
             # Close immediately
             $OpenDoc.Close(0)
