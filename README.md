@@ -72,10 +72,10 @@ Retrieve your forged PDFs from the 02_Outbox.
 
 To execute without needing to change directies:
 
-powershell.exe -ExecutionPolicy Bypass -File [ABSOLUTE REF]
+>> powershell.exe -ExecutionPolicy Bypass -File [ABSOLUTE REF]
 
 To execute in Powershell go to directory for LogisticsHub
-Set-ExecutionPolicy Bypass -Scope Process -Force .\PDF_from_DOCX.ps1
+>> Set-ExecutionPolicy Bypass -Scope Process -Force .\PDF_from_DOCX.ps1
 
 # Troubleshooting & Known Issues
 
