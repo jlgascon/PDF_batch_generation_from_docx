@@ -1,17 +1,17 @@
 ## DOCX to PDF Heavy Transmutation Pipeline
 
-#Version: 1.1 (Prototype Grade)
-#Author: Jake Gascon
+# Version: 1.1 (Prototype Grade)
+# Author: Jake Gascon
 
 Core Technology: PowerShell, Microsoft Word COM Interop
 
-##Overview
+## Overview
 
 The DOCX -> PDF Heavy Transmutation Pipeline is an automated, hardened PowerShell script designed to reliably batch-convert Microsoft Word documents (.docx) into fixed-format PDF files.
 
 Unlike standard conversion scripts, this pipeline is built for high-throughput, unattended environments. It features built-in idempotency, network permission validation, self-healing COM object recovery, and aggressive memory management to prevent zombie WINWORD.EXE processes.
 
-##Core Features
+## Core Features
 
 Automated Logistics Hub: Automatically builds its required folder infrastructure (Queue, Outbox, Archive).
 
