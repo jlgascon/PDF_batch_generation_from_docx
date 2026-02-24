@@ -1,17 +1,17 @@
-## DOCX to PDF Heavy Transmutation Pipeline
+# DOCX to PDF Heavy Transmutation Pipeline
 
-# Version: 1.1 (Prototype Grade)
-# Author: Jake Gascon
+## Version: 1.1 (Prototype Grade)
+## Author: Jake Gascon
 
 Core Technology: PowerShell, Microsoft Word COM Interop
 
-## Overview
+# Overview
 
 The DOCX -> PDF Heavy Transmutation Pipeline is an automated, hardened PowerShell script designed to reliably batch-convert Microsoft Word documents (.docx) into fixed-format PDF files.
 
 Unlike standard conversion scripts, this pipeline is built for high-throughput, unattended environments. It features built-in idempotency, network permission validation, self-healing COM object recovery, and aggressive memory management to prevent zombie WINWORD.EXE processes.
 
-## Core Features
+# Core Features
 
 Automated Logistics Hub: Automatically builds its required folder infrastructure (Queue, Outbox, Archive).
 
@@ -27,7 +27,7 @@ Nuclear Cleanup: Aggressive garbage collection ([System.GC]) and specific COM ob
 
 Comprehensive Audit Logging: Writes timestamped logs to the console and a local Transmutation_Audit.log file, categorizing outputs by [INFO], [SUCCESS], [WARN], [ERROR], and [CRITICAL].
 
-## Prerequisites
+# Prerequisites
 
 To deploy the Transmutation Pipeline, the host machine must have:
 
@@ -35,7 +35,7 @@ Windows OS with PowerShell 5.1 or higher.
 
 Microsoft Office / Microsoft Word installed locally. The script relies on the Word COM Object (Word.Application) to ensure 100% native formatting accuracy.
 
-## Folder Architecture (The Logistics Hub)
+# Folder Architecture (The Logistics Hub)
 
 The script relies on a central "Logistics Hub." When executed, it guarantees the existence of the following hierarchy:
 
@@ -47,7 +47,7 @@ LogisticsHub/
 └── Transmutation_Audit.log   <-- Continuous rolling log of all pipeline events.
 
 
-## Setup & Execution
+# Setup & Execution
 
 # 1. Configuration
 
@@ -70,7 +70,7 @@ Watch the console or the Transmutation_Audit.log to monitor the process.
 
 Retrieve your forged PDFs from the 02_Outbox.
 
-Troubleshooting & Known Issues
+# Troubleshooting & Known Issues
 
 Error: Cannot convert the value of type "psobject" to type "Object"
 
