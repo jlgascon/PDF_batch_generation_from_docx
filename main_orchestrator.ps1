@@ -79,6 +79,7 @@ Write-Audit "Target acquired: $($Docs.Count) documents in the Queue." "INFO"
 # --- 4. The Forge (Main Execution Loop) ---
 
 $Word = Start-WordEngine
+# LETS COME BACK TO THIS AND CLEAN UP THE OUTPUTS FOR CONSOLE CLARITY AND LOGGING EFFICIENCY
 
 try {
     foreach ($Doc in $Docs) {
