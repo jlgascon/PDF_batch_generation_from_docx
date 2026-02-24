@@ -70,6 +70,13 @@ Watch the console or the Transmutation_Audit.log to monitor the process.
 
 Retrieve your forged PDFs from the 02_Outbox.
 
+To execute without needing to change directies:
+
+powershell.exe -ExecutionPolicy Bypass -File [ABSOLUTE REF]
+
+To execute in Powershell go to directory for LogisticsHub
+Set-ExecutionPolicy Bypass -Scope Process -Force .\PDF_from_DOCX.ps1
+
 # Troubleshooting & Known Issues
 
 Error: Cannot convert the value of type "psobject" to type "Object"
